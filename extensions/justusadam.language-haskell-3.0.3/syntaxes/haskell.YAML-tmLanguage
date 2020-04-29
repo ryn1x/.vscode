@@ -1,0 +1,626 @@
+fileTypes:
+    - hs
+    - hsig
+keyEquivalent: ^~H
+name: Haskell
+patterns:
+  - name: block.liquidhaskell.haskell
+    contentName: block.liquidhaskell.haskell
+    begin: '\{-@'
+    end: '@-\}'
+    patterns: {include: $self}
+  - captures:
+      '3': {name: entity.name.namespace}
+    comment: |
+      In case this regex seems unusual for an infix operator, note that Haskell
+      allows any ordinary function application (elem 4 [1..10]) to be rewritten
+      as an infix expression (4 `elem` [1..10]).
+    match: >-
+      (`)(([\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}''\.]*)\.)?[\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*(`)
+    name: keyword.operator.function.infix.haskell
+  - match: '\(\s*\)'
+    name: constant.language.unit.haskell
+  - match: '\[\s*\]'
+    name: constant.language.empty-list.haskell
+  - begin: '(\b(module)|^(signature))(\b(?!''))'
+    beginCaptures:
+      '2': {name: keyword.other.module.haskell}
+      '3': {name: keyword.other.signature.haskell}
+    end: '\b(where)(\b(?!''))'
+    endCaptures:
+      '1': {name: keyword.other.where.haskell}
+    name: meta.declaration.module.haskell
+    patterns:
+      - include: '#module_name'
+      - include: '#module_exports'
+      - include: '#comments'
+      - match: '[a-z]+'
+        name: invalid
+  - begin: '\b(class)(\b(?!''))'
+    beginCaptures:
+      '1': {name: keyword.other.class.haskell}
+    end: '(\b(where)(\b(?!'')))|(?=^\S)'
+    endCaptures:
+      '1': {name: keyword.other.where.haskell}
+    name: meta.declaration.class.haskell
+    patterns:
+      - {include: '#type_signature'}
+  - begin: >-
+      (?x)
+        ^(\s)*\b(data)
+        \s+
+        (
+          [\p{Lu}\p{Lt}][\w\p{Nd}_']*                   # named type
+        | \(\s*:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]+\s*\)   # Operator type
+        )
+        (.*)
+        \b(where(?:\b(?!')))
+    beginCaptures:
+      '2': {name: keyword.other.data.haskell}
+      '3': {name: storage.type.haskell}
+      '4':
+        patterns:
+          - include: '#type_signature'
+      '5': {name: keyword.other.where.haskell}
+    name: meta.declaration.type.gadt.haskell
+    end: | 
+      (?x)
+        (?=\bderiving\b)
+        |^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/implementation
+    patterns:
+      - include: '#deriving'
+      - begin: '^(\s*)(\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*)\s*(::|∷)'
+        beginCaptures:
+          '2': {name: constant.other.haskell}
+          '3': {name: keyword.operator.double-colon.haskell}
+        end: |
+          (?x)
+            ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/implementation
+        patterns:
+          - include: '#type_signature'
+      - begin: '(\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*)\s*(::|∷)'
+        beginCaptures:
+          '1': {name: constant.other.haskell}
+          '2': {name: keyword.operator.double-colon.haskell}
+        end: '$'
+        patterns: 
+          - include: '#type_signature'
+  - begin: >-
+      (?x)
+        ^(\s)*\b(newtype)
+        \s+
+        (
+          [\p{Lu}\p{Lt}][\w\p{Nd}_']*                   # named type
+        | \(\s*:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]+\s*\)   # Operator type
+        )
+        ([^=]*)
+        (?:(=)|$)
+    beginCaptures:
+      '2': {name: keyword.other.newtype.haskell}
+      '3': {name: storage.type.haskell}
+      '4':
+        patterns:
+          - include: '#type_signature'
+      '5': {name: keyword.other.eq.haskell}
+    name: meta.declaration.newtype.haskell
+    end: | 
+      (?x)
+        ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/*
+    patterns:
+      - include: '#existential'
+      - include: '#record_decl'
+      - include: '#deriving'
+      - begin: '^(\s*)(=)?\s*(\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*)'
+        beginCaptures:
+          '2': {name: keyword.operator.eq.haskell}
+          '3': {name: constant.other.haskell}
+        name: multiline
+        end: |
+          (?x)
+              (?=\||\bderiving\b)
+            | ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/implementation
+        patterns:
+          - include: '#record_decl' 
+          - include: '#type_signature'
+      - begin: '\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*'
+        beginCaptures: 
+          '0': {name: constant.other.haskell}
+        end: '$'
+        endCaptures:
+          '0': {name: keyword.operator.haskell}
+        comment: Inline data constructors i.e. `A a b | B c d` 
+        patterns:
+          - include: '#record_decl' 
+          - include: '#type_signature'
+  - begin: >-
+      (?x)
+        ^(\s)*\b(data)
+        \s+
+        (
+          [\p{Lu}\p{Lt}][\w\p{Nd}_']*                   # named type
+        | \(\s*:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]+\s*\)   # Operator type
+        )
+        ([^=]*)
+        (?:(=)|$)
+    beginCaptures:
+      '2': {name: keyword.other.data.haskell}
+      '3': {name: storage.type.haskell}
+      '4':
+        patterns:
+          - include: '#type_signature'
+      '5': {name: keyword.operator.eq.haskell}
+    end: | 
+      (?x)
+        ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/*
+    name: meta.declaration.adt.haskell
+    patterns:
+      - include: '#existential'
+      - include: '#record_decl'
+      - include: '#deriving'
+      - begin: '^(\s*)(?:(\|)|(=))\s*(\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*)'
+        beginCaptures:
+          '2': {name: keyword.operator.pipe.haskell}
+          '3': {name: keyword.operator.eq.haskell}
+          '4': {name: constant.other.haskell}
+        end: |
+          (?x)
+              (?=\||\bderiving\b)
+            | ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/implementation
+        patterns:
+          - include: '#record_decl' 
+          - include: '#type_signature'
+      - begin: '\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*'
+        beginCaptures: 
+          '0': {name: constant.other.haskell}
+        end: '\||$'
+        endCaptures:
+          '0': {name: keyword.operator.pipe.haskell}
+        comment: Inline data constructors i.e. `A a b | B c d` 
+        patterns:
+          - include: '#record_decl' 
+          - include: '#type_signature'
+  - match: '^\s*(type\s+(family|role|instance)|pattern)'
+    captures:
+      '1': {name: keyword.other.haskell}
+  - begin: >-
+      (?x)
+        ^(\s*)\b(type)
+          \s+
+          ([^=]*)
+          (?:
+            \s+
+            (=)
+            (.*)
+          )?\s*$
+    beginCaptures:
+      '2': {name: keyword.other.type.haskell}
+      '3':
+        patterns:
+          - include: '#type_signature'
+      '4': {name: keyword.operator.eq.haskell}
+      '5':
+        patterns:
+          - include: '#type_signature'
+    patterns:
+      - include: '#type_signature'
+    end: | 
+      (?x)
+        ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/implementation
+  - begin: '^(\s*)\b(instance)(\b(?!''))'
+    beginCaptures:
+      '2': {name: keyword.other.instance.haskell}
+    end: |
+      (?x)
+        \b(where)\b(?!')
+        | ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/implementation
+    endCaptures:
+      '1': {name: keyword.other.where.haskell}
+    name: meta.declaration.instance.haskell
+    patterns:
+      - include: '#type_signature'
+  - begin: >-
+      \b(import)(\b(?!'))
+    beginCaptures:
+      '1': {name: keyword.other.import.haskell}
+    end: '($|;|(?=--))'
+    name: meta.import.haskell
+    patterns:
+      - match: (qualified|as|hiding)
+        name: keyword.other.haskell
+      - include: '#module_name'
+      - include: '#module_exports'
+  - include: '#deriving'
+  - match: '\b(deriving)\s+(via)\s+\((.*)\)\s+(instance)\b\s+(.*)$'
+    name: test
+    captures:
+      '1': {name: keyword.other.deriving.haskell}
+      '2': {name: keyword.other.haskell}
+      '3': {patterns: [{include: '#type_signature'}]}
+      '4': {name: keyword.other.instance.haskell}
+      '5': {name: entity.other.inherited-class.haskell}
+  - match: '\b(deriving) (instance)\b(.*)$'
+    captures:
+      '1': {name: keyword.other.deriving.haskell}
+      '2': {name: keyword.other.instance.haskell}
+      '3': {patterns: [{include: '#type_signature'}]}
+  - match: >-
+      (?x)\b
+        (?: (where)
+        | (let)
+        | (in)
+        | (default)
+        | (rec)
+        )(\b(?!'))
+    captures:
+      '1': {name: keyword.other.where.haskell}
+      '2': {name: keyword.other.let.haskell}
+      '3': {name: keyword.other.in.haskell}
+      '4': {name: keyword.other.haskell}
+      '5': {name: keyword.other.haskell}
+  - match: '\binfix[lr]?(\b(?!''))'
+    name: keyword.operator.haskell
+  - match: '\b(m?do|if|then|else|case|of)(\b(?!''))'
+    name: keyword.control.haskell
+  - include: '#numeric_literals'
+  - match: '(?<![\p{Ll}_\p{Lu}\p{Lt}\p{Nd}''])(@)\s*([\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']+)'
+    captures:
+      '1': {name: keyword.operator.at.haskell}
+      '2': 
+        patterns:
+          - include: '#type_variable'
+          - include: '#type_constructor'
+  - begin: '(?<![\p{Ll}_\p{Lu}\p{Lt}\p{Nd}''])(@)\s*(\()'
+    beginCaptures: 
+      '1': {name: keyword.operator.at.haskell}
+      '2': {name: punctuation.paren.haskell}
+    end: '\)'
+    endCaptures:
+      '0': {name: punctuation.paren.haskell}
+    name: meta.type-application.haskell
+    patterns:
+      - include: '#type_signature'
+  - begin: '(?<![\p{Ll}_\p{Lu}\p{Lt}\p{Nd}''])(@)\s*(\[)'
+    beginCaptures: 
+      '1': {name: keyword.operator.at.haskell}
+      '2': {name: punctuation.brace.haskell}
+    end: '\]'
+    name: meta.type-application.haskell
+    endCaptures:
+      '0': {name: punctuation.brace.haskell}
+    patterns:
+      - include: '#type_signature'
+  - captures:
+      '1': {name: punctuation.definition.preprocessor.c}
+    comment: 'In addition to Haskell''s "native" syntax, GHC permits the C preprocessor to be run on a source file.'
+    match: '^\s*(#)\s*\w+'
+    name: meta.preprocessor.c
+  - include: '#pragma'
+  - include: '#string_literal'
+  - captures:
+      '1': {name: punctuation.definition.string.begin.haskell}
+      '2': {name: constant.character.escape.haskell}
+      '3': {name: constant.character.escape.octal.haskell}
+      '4': {name: constant.character.escape.hexadecimal.haskell}
+      '5': {name: constant.character.escape.control.haskell}
+      '6': {name: punctuation.definition.string.end.haskell}
+    match: |
+      (?x)
+        (')
+        (?:
+          [\ -\[\]-~]                         # Basic Char
+        | (\\(?:NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE
+             |DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS
+             |US|SP|DEL|[abfnrtv\\\"'\\&]))   # Escapes
+        | (\\o[0-7]+)                         # Octal Escapes
+        | (\\x[0-9A-Fa-f]+)                   # Hexadecimal Escapes
+        | (\^[A-Z@\[\]\\\^_])                 # Control Chars
+        )
+        (')
+    name: string.quoted.single.haskell
+  - include: '#fun_decl'
+  - include: '#data_constructor'
+  - include: '#qualifier'
+  - include: '#comments'
+  - include: '#infix_op'
+  - begin: '(::|∷)'
+    beginCaptures:
+      '1': {name: keyword.other.double-colon.haskell}
+    end: >-
+      (?=\)|$|,|}|\b(in|then|else|of)\b(?!')|<\-)
+    patterns:
+      - include: '#type_signature'
+    name: meta.type-declaration.haskell
+  - comment: >
+      In case this regex seems overly general, note that Haskell permits 
+      the definition of new operators which can be nearly any string of 
+      punctuation characters, such as $%^&*.
+    match: >-
+      [\p{S}\p{P}&&[^(),;\[\]`{}_"']]+
+    name: keyword.operator.haskell
+  - include: '#comma'
+  - match: '^\s*(foreign)\s+(import|export)\s+(ccall|cplusplus|dotnet|jvm|stdcall)\b(?!'')'
+    name: meta.import.foreign.haskell
+    captures:
+      '1': {name: keyword.other.foreign.haskell}
+      '2': {name: keyword.other.haskell}
+      '3': {name: keyword.other.haskell}
+repository:
+  block_comment:
+    applyEndPatternLast: 1
+    begin: '\{-(?!#)'
+    captures:
+      '0': {name: punctuation.definition.comment.haskell}
+    end: '-\}'
+    name: comment.block.haskell
+    patterns:
+      - include: '#block_comment'
+  comments:
+    patterns:
+      - begin: '^\s*(--\s+\|)'
+        beginCaptures:
+          '1': {name: punctuation.whitespace.comment.leading.haskell}
+        end: '(?=^(?!\s*--\s))'
+        name: comment.block.documentation.haskell
+      - applyEndPatternLast: 1
+        begin: '\{-\|'
+        captures:
+          '0': {name: punctuation.definition.comment.haskell}
+        end: '-\}'
+        name: comment.block.documentation.haskell
+        patterns:
+          - include: '#block_comment'
+      - begin: >-
+          (^[ \t]+)?(?=--+(?![\p{S}\p{P}&&[^(),;\[\]`{}_"']]))
+        beginCaptures:
+          '1': {name: punctuation.whitespace.comment.leading.haskell}
+        comment: 'Operators may begin with ''--'' as long as they are not entirely composed of ''-'' characters. This means comments can''t be immediately followed by an allowable operator character.'
+        end: '(?!\G)'
+        patterns:
+          - begin: '--'
+            beginCaptures: 
+              '0': {name: punctuation.definition.comment.haskell}
+            end: \n
+            name: comment.line.double-dash.haskell
+      - {include: '#block_comment'}
+  deriving:
+    patterns:
+      - begin: '(deriving)\s*\('
+        beginCaptures:
+          '1': {name: keyword.other.deriving.haskell}
+        end: \)
+        name: meta.deriving.haskell
+        patterns:
+          - include: '#derivings'
+
+      - match: |
+          (?x)
+            (deriving)\s+
+              ([\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*)
+              (\s+(via)\s+(.*)$)?
+        captures:
+          '1': {name: keyword.other.haskell}
+          '2': {name: entity.other.inherited-class.haskell}
+          '4': {name: keyword.other.haskell}
+          '5': {patterns: [{include: '#type_signature'}]}
+        name: meta.deriving.haskell
+  derivings:
+    patterns:
+      - match: >-
+          \b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*
+        name: entity.other.inherited-class.haskell
+      - begin: \(
+        end: \)
+        patterns:
+          - include: '#derivings'
+  infix_op:
+    comment: >
+      An operator cannot be composed entirely of '-' characters; 
+      instead, it should be matched as a comment.
+    match: >-
+      (\((?!--+\))[\p{S}\p{P}&&[^(),;\[\]`{}_"']]+\)|\(,+\))
+    name: entity.name.function.infix.haskell
+  module_exports:
+    begin: \(
+    beginCaptures:
+      '0': {name: punctuation.paren.haskell}
+    end: \)
+    endCaptures:
+      '0': {name: punctuation.paren.haskell}
+    applyEndPatternLast: 1
+    name: meta.declaration.exports.haskell
+    patterns:
+      - match: '\b(module)\b(?!'')'
+        captures:
+          '1': {name: keyword.other.module.haskell}
+      - include: '#comma'
+      - include: '#export_constructs'
+      - begin: '\('
+        end: '\)'
+        patterns:
+          - include: '#export_constructs'
+  export_constructs:
+    patterns:
+      - match: '\b(pattern)\b(?!'')'
+        captures:
+          '1': {name: keyword.other.haskell}
+      - match: >-
+          \b[\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*
+        name: entity.name.function.haskell
+      - match: >-
+          \b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*
+        name: storage.type.haskell
+      - include: '#infix_op'
+      - include: '#comments'
+      - match: '\(\s*:[\p{S}\p{P}&&[^(),;\[\]`{}_"'']]+\s*\)'
+        name: storage.type.haskell
+  comma:
+    match: ','
+    name: punctuation.separator.comma.haskell
+  module_name:
+    match: >-
+      (?<conid>[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*(\.\g<conid>)?)
+    name: entity.name.namespace
+  pragma:
+    begin: '\{-#'
+    end: '#-\}'
+    name: meta.preprocessor.haskell
+    patterns:
+      - match: >-
+          (?xi)
+          \b(LANGUAGE|OPTIONS_GHC|INCLUDE|WARNING
+            |MINIMAL|UNPACK|SPECIALISE|OVERLAPS|INCOHERENT
+            |NOUNPACK|SOURCE|OVERLAPPING|OVERLAPPABLE|INLINE
+            |NOINLINE|INLINE?ABLE|CONLIKE|LINE|COLUMN|RULES
+            |SPECIALIZE|COMPLETE)\b
+        name: keyword.other.preprocessor.haskell
+      - begin: '(?i)\b(DEPRECATED)\b'
+        beginCaptures:
+          '1': {name: keyword.other.preprocessor.haskell}
+        end: '(?=#-\})'
+        patterns:
+          - {include: '#string_literal'}
+  existential:
+    begin: '\b(forall|∀)(?!'')\b'
+    beginCaptures: 
+      '1': {name: keyword.other.forall.haskell}
+    end: '(?<=\s|\w)(=>|⇒)'
+    endCaptures: 
+      '1': {name: keyword.operator.big-arrow.haskell}
+    patterns: 
+      - include: '#type_variable'
+      - include: '#type_constructor'
+      - include: '#namespace'
+      - match: '\.'
+        name: keyword.operator.period.haskell
+  data_constructor:
+    match: >-
+      \b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*(?!\.|\S)
+    name: constant.other.haskell
+  qualifier:
+    match: >-
+      \b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*(?=\.)\b
+    name: meta.import.qualifier.haskell
+  record_decl:
+    begin: '{'
+    end: '}'
+    name: meta.record.definition.haskell
+    patterns: 
+      - begin: >-
+          (?x)
+          ([\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*)
+          (?:\s*,\s*([\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*))*
+          \s(::|∷)
+        end: ',|(?=})'
+        beginCaptures:
+          '1': {name: variable.other.definition.field.haskell}
+          '2': {name: variable.other.definition.field.haskell}
+          '3': {name: keyword.operator.double-colon.haskell}
+        patterns: 
+          - include: '#type_signature'
+  fun_decl:
+    begin: |
+      (?x)^(\s*)
+        (?<fn>
+          (?:
+            [\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*
+          | \(
+              (?!--+\))
+              (?:
+                (?![(),;\[\]`{}_"'])[\p{S}\p{P}]
+              )+
+            \)
+          )
+          (?:\s*,\s*\g<fn>)?
+        )
+        \s*(::|∷)
+    beginCaptures:
+      '2':
+        patterns:
+          - match: '[\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*'
+            name: entity.name.function.haskell
+          - include: '#infix_op'
+      '3': {name: keyword.operator.double-colon.haskell}
+    name: meta.function.type-declaration.haskell
+    patterns:
+      - include: '#type_signature'
+    end: |
+      (?x)
+        (?=               # we look ahead, but we do not want to consume
+          (<\-)           # we are the left side of a `x :: Type <- expr` bind statement
+          | }             # A block closed? Maybe this should also include `;`, because non-indentation based `do`
+        )
+        | ^(?!\1\s+\S|\s*$)    # at least one, no-further indented, non-whitespace character. I.e. a same-level declaration/implementation
+  type_signature:
+    patterns:
+      - match: '\(\s*\)'
+        name: support.constant.unit.haskell
+      - begin: \(
+        end: \)
+        patterns:
+          - include: '#comma'
+          - include: '#type_signature'
+      - include: '#integer_literals'
+      - match: '(?<=[\s())\w\d]):[\p{S}\p{P}&&[^(),;\[\]`{}_"'']]+(?=[\s()\w\d])'
+        comment: Operator type
+        name: keyword.operator.custom.haskell
+      - include: '#pragma'
+      - match: '->|→'
+        name: keyword.operator.arrow.haskell
+      - include: '#forall'
+      - match: '=>|⇒'
+        name: keyword.operator.big-arrow.haskell
+      - include: '#type_variable'
+      - include: '#type_constructor'
+      - include: '#namespace'
+      - include: '#comments'
+      - include: '#string_literal'
+  namespace:
+    match: '\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*(?=\.)'
+    name: entity.name.namespace
+  type_variable:
+    match: '\b[\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*'
+    name: variable.other.generic-type.haskell
+  type_constructor:
+    match: '\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*(?!\.)\b'
+    name: storage.type.haskell
+  forall:
+    match: '\b(forall|∀)\b(?!'')'
+    captures: 
+      '1': {name: keyword.other.forall.haskell}
+  string_literal:
+    begin: '"'
+    beginCaptures:
+      '0': {name: punctuation.definition.string.begin.haskell}
+    end: '"'
+    endCaptures:
+      '0': {name: punctuation.definition.string.end.haskell}
+    name: string.quoted.double.haskell
+    patterns:
+      - match: '\\(NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE|DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS|US|SP|DEL|[abfnrtv\\\"''\&])'
+        name: constant.character.escape.haskell
+      - match: '\\o[0-7]+|\\x[0-9A-Fa-f]+|\\[0-9]+'
+        name: constant.character.escape.octal.haskell
+      - match: '\\\^[A-Z@\[\]\\\^_]'
+        name: constant.character.escape.control.haskell
+      - begin: \\\s
+        beginCaptures:
+          '0': {name: constant.character.escape.begin.haskell}
+        end: \\
+        endCaptures:
+          '0': {name: constant.character.escape.end.haskell}
+        patterns:
+          - match: \S+
+            name: invalid.illegal.character-not-allowed-here.haskell
+  float_literals:
+    comment: 'Floats are decimal or hexadecimal'
+    match: '\b([0-9](_*[0-9])*\.[0-9](_*[0-9])*(_*[eE][-+]?[0-9](_*[0-9])*)?|[0-9](_*[0-9])*_*[eE][-+]?[0-9](_*[0-9])*|0[xX]_*[0-9a-fA-F](_*[0-9a-fA-F])*\.[0-9a-fA-F](_*[0-9a-fA-F])*(_*[pP][-+]?[0-9](_*[0-9])*)?|0[xX]_*[0-9a-fA-F](_*[0-9a-fA-F])*_*[pP][-+]?[0-9](_*[0-9])*)\b'
+    name: constant.numeric.float.haskell
+  integer_literals:
+    match: '\b([0-9](_*[0-9])*|0([xX]_*[0-9a-fA-F](_*[0-9a-fA-F])*|[oO]_*[0-7](_*[0-7])*|[bB]_*[01](_*[01])*))\b'
+    name: constant.numeric.haskell
+  numeric_literals:
+    patterns:
+      - include: '#integer_literals'
+      - include: '#float_literals'
+scopeName: source.haskell
+uuid: 5C034675-1F6D-497E-8073-369D37E2FD7D

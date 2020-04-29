@@ -1,0 +1,99 @@
+fileTypes:
+  - cabal
+name: Cabal
+patterns:
+  - name: keyword.other.cabal
+    match: |
+      (?ix)(\n|^)
+        ( name
+        | version
+        | cabal-version
+        | build-type
+        | license(-file)?
+        | copyright
+        | author
+        | maintainer
+        | stability
+        | homepage
+        | bug-reports
+        | package-url
+        | synopsis
+        | data-(files|dir)
+        | description
+        | category
+        | extra-(source|doc|tmp)-files
+        | tested-with
+        ):
+  - name: keyword.other.cabal
+    match: |
+      (?ix)^[ \t]+
+        ( (build(-tool)?|pkgconfig|setup)-depends
+        | (hs-source|include|extra-(lib|frameworks))-dirs
+        | ((other|default)-)?extensions
+        | build-tools
+        | buildable
+        | ((install|autogen)-)?includes
+        | (c(xx)?|js)-sources
+        | extra-
+          ( ((ghci|bundled)-)?libraries
+          | (dynamic-)?library-flavours
+          )
+        | (cmm|cxx|cc|cpp|ld|ghc(-(prof|shared))?)-options
+        | (asm|cmm)-(sources|options)
+        | other-languages
+        | default-language
+        | frameworks
+        | default
+        | manual
+        | location
+        | branch
+        | tag
+        | subdir
+        | exposed(-modules)?
+        | (other|virtual|autogen|reexported)-modules
+        | main-is
+        | type
+        | test-module
+        | description
+        | mixins
+        | import
+        | signatures
+        | scope
+        | lib-version-(version|linux)
+        | mod-def-file
+        | options
+        | x-\w[1-9\w_-]*
+        ):
+  - name: keyword.operator.cabal
+    match: '(==|>=|<=|<|>|^>=|\|\||&&|!)'
+  - name: constant.numeric.cabal
+    match: '(?<=[^\w])\d+(\.\d+)*(\.\*)?'
+  - name: markup.underline.link.cabal
+    match: '\w+:/(/[\w._\-\d%])+(\?[\w.+_\-\d%]+)(&[\w._+\-\d%]+)*'
+  - name: entity.name.section.cabal
+    match: |
+      ^(?ix:
+        ( library
+        | custom-setup
+        )
+      )$
+  - match: |
+      ^(?ix:
+        ( executable
+        | flag
+        | test-suite
+        | benchmark
+        | common
+        | source-repository
+        | foreign-library
+        )
+      )( |\t)+([\w\-_]+)$
+    captures:
+      '1': {name: entity.name.section.cabal}
+      '3': {name: entity.name.function.cabal}
+  - name: keyword.control.cabal
+    match: '^[ \t]*(if|else)'
+  - name: comment.line.double-dash
+    match: '^\s*--.*$'
+scopeName: source.cabal
+uuid: 5eb56f02-df11-40b2-b6d5-fa444522416c
